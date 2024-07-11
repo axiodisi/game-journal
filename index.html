@@ -81,13 +81,12 @@
             <label for="improvement">What can you improve next time?</label>
             <textarea id="improvement" name="improvement" rows="4" required></textarea>
 
-            <button type="button" onclick="generateSheet()">Generate Google Sheet</button>
+            <button type="button" onclick="submitData()">Submit Data</button>
         </form>
         <div id="result"></div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <script>
-        function generateSheet() {
+        async function submitData() {
             const formData = {
                 bankroll: document.getElementById('bankroll').value,
                 max_loss: document.getElementById('max_loss').value,
@@ -98,27 +97,27 @@
                 improvement: document.getElementById('improvement').value
             };
 
-            const data = [
-                ["Initial Bankroll", "Max Loss", "Take Profit", "Rounds Played", "Final Bankroll", "Stuck to Strategy", "Improvement"],
-                [formData.bankroll, formData.max_loss, formData.take_profit, formData.rounds_played, formData.final_bankroll, formData.strategy, formData.improvement]
-            ];
-
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Journal");
-
             const now = new Date();
             const year = String(now.getFullYear()).slice(2);
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const day = String(now.getDate()).padStart(2, '0');
             const hour = String(now.getHours()).padStart(2, '0');
             const minute = String(now.getMinutes()).padStart(2, '0');
+            const second = String(now.getSeconds()).padStart(2, '0');
+            const timestamp = `${year}${month}${day}${hour}${minute}${second}`;
 
-            const fileName = `FCS_Game_Journal_${year}${month}${day}${hour}${minute}.xlsx`;
+            formData.timestamp = timestamp;
 
-            XLSX.writeFile(wb, fileName);
+            const response = await fetch('YOUR_WEB_APP_URL', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
 
-            document.getElementById('result').innerText = 'Your game journal has been generated. Check your downloads!';
+            const result = await response.json();
+            document.getElementById('result').innerText = result.message;
         }
     </script>
 </body>
