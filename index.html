@@ -107,7 +107,16 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Journal");
 
-            XLSX.writeFile(wb, "FCS_Game_Journal.xlsx");
+            const now = new Date();
+            const year = String(now.getFullYear()).slice(2);
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hour = String(now.getHours()).padStart(2, '0');
+            const minute = String(now.getMinutes()).padStart(2, '0');
+
+            const fileName = `FCS_Game_Journal_${year}${month}${day}${hour}${minute}.xlsx`;
+
+            XLSX.writeFile(wb, fileName);
 
             document.getElementById('result').innerText = 'Your game journal has been generated. Check your downloads!';
         }
