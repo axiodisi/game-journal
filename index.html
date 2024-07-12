@@ -125,6 +125,8 @@
                             listFiles();
                         });
                     }
+                }).catch(error => {
+                    console.error('Error initializing GAPI client:', error);
                 });
             });
         }
@@ -145,6 +147,8 @@
                 } else {
                     document.getElementById('content').innerHTML = 'No files found.';
                 }
+            }).catch(error => {
+                console.error('Error listing files:', error);
             });
         }
 
@@ -158,6 +162,11 @@
                 window.location.reload();
             }).catch(error => {
                 console.error('Error signing out:', error);
+                localStorage.removeItem('google_token');
+                document.getElementById('login-button').style.display = 'block';
+                document.getElementById('logout-button').style.display = 'none';
+                document.getElementById('content').innerHTML = '';
+                window.location.reload();
             });
         }
 
