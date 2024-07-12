@@ -115,17 +115,17 @@
             localStorage.setItem('google_token', token);
             document.getElementById('g_id_signin').style.display = 'none';
             document.getElementById('logout-button').style.display = 'block';
-            initializeGapiClient();
+            initializeGapiClient(token);
         }
 
-        function initializeGapiClient() {
+        function initializeGapiClient(token) {
             gapi.load('client', () => {
                 gapi.client.init({
                     apiKey: 'YOUR_API_KEY', // Replace with your API key
-                    clientId: CLIENT_ID,
                     discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
                     scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
                 }).then(() => {
+                    gapi.client.setToken({ access_token: token });
                     listFiles();
                 }).catch(error => {
                     console.error('Error initializing GAPI client:', error);
