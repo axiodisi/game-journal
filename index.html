@@ -123,17 +123,18 @@
             localStorage.setItem('google_token', token);
             document.getElementById('g_id_signin').style.display = 'none';
             document.getElementById('logout-button').classList.remove('hidden');
-            await initializeGapiClient();
+            await initializeGapiClient(token);
             await checkForScriptUrl();
         }
 
-        async function initializeGapiClient() {
+        async function initializeGapiClient(token) {
             return new Promise((resolve, reject) => {
                 gapi.load('client:auth2', () => {
                     gapi.client.init({
                         clientId: CLIENT_ID,
                         scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
                     }).then(() => {
+                        gapi.client.setToken({ access_token: token });
                         resolve();
                     }).catch(reject);
                 });
@@ -239,7 +240,7 @@
             if (token) {
                 document.getElementById('g_id_signin').style.display = 'none';
                 document.getElementById('logout-button').classList.remove('hidden');
-                initializeGapiClient().then(checkForScriptUrl);
+                initializeGapiClient(token).then(checkForScriptUrl);
             }
         }
 
