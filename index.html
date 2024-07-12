@@ -67,7 +67,6 @@
         }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://apis.google.com/js/api.js" async defer></script>
 </head>
 <body>
     <div class="container">
@@ -150,7 +149,7 @@
                 try {
                     const response = await gapi.client.drive.files.list({
                         'q': "name = 'fcs_config.json' and trashed = false",
-                        'spaces': 'drive',
+                        'spaces': 'appDataFolder',
                         'fields': 'files(id, name)'
                     });
 
