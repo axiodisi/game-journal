@@ -77,7 +77,7 @@
                 data-callback="handleCredentialResponse"
                 data-auto_prompt="false">
             </div>
-            <div class="g_id_signin" data-type="standard"></div>
+            <div id="g_id_signin"></div>
             <button id="logout-button" style="display: none;">Logout</button>
         </div>
         <form id="journalForm">
@@ -113,7 +113,7 @@
         function handleCredentialResponse(response) {
             const token = response.credential;
             localStorage.setItem('google_token', token);
-            document.getElementById('login-button').style.display = 'none';
+            document.getElementById('g_id_signin').style.display = 'none';
             document.getElementById('logout-button').style.display = 'block';
             initializeGapiClient();
         }
@@ -157,7 +157,7 @@
         function handleSignoutClick() {
             google.accounts.id.disableAutoSelect();
             localStorage.removeItem('google_token');
-            document.getElementById('login-button').style.display = 'block';
+            document.getElementById('g_id_signin').style.display = 'block';
             document.getElementById('logout-button').style.display = 'none';
             document.getElementById('content').innerHTML = '';
             window.location.reload();
@@ -170,16 +170,16 @@
                 auto_select: false
             });
             google.accounts.id.renderButton(
-                document.getElementById('login-button'),
+                document.getElementById('g_id_signin'),
                 { theme: 'outline', size: 'large' }
             );
             document.getElementById('logout-button').onclick = handleSignoutClick;
 
             const token = localStorage.getItem('google_token');
             if (token) {
-                document.getElementById('login-button').style.display = 'none';
+                document.getElementById('g_id_signin').style.display = 'none';
                 document.getElementById('logout-button').style.display = 'block';
-                initializeGapiClient();
+                initializeGapiClient(token);
             }
         }
 
