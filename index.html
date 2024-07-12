@@ -119,10 +119,9 @@
         }
 
         function initializeGapiClient(token) {
-            gapi.load('client', () => {
-                gapi.client.init({
-                    apiKey: 'YOUR_API_KEY', // Replace with your API key
-                    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+            gapi.load('client:auth2', () => {
+                gapi.auth2.init({
+                    client_id: CLIENT_ID,
                     scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
                 }).then(() => {
                     gapi.client.setToken({ access_token: token });
