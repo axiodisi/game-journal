@@ -64,6 +64,7 @@
         }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer onload="gapiLoaded()"></script>
 </head>
 <body>
     <div class="container">
@@ -110,6 +111,10 @@
     <script>
         const CLIENT_ID = '812194722245-3cinf55qaia7jlftpuoo9kco7dtetmbf.apps.googleusercontent.com'; // Replace with your client ID
 
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
         function handleCredentialResponse(response) {
             const token = response.credential;
             localStorage.setItem('google_token', token);
@@ -120,15 +125,11 @@
         }
 
         function initializeGapiClient(token) {
-            gapi.load('client', async () => {
-                await gapi.client.init({
-                    apiKey: '', // No need for API key
-                    clientId: CLIENT_ID,
-                    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets'
-                });
-
+            gapi.client.init({
+                clientId: CLIENT_ID,
+                scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets'
+            }).then(() => {
                 gapi.client.setToken({ access_token: token });
-
                 listFiles();
             });
         }
@@ -196,7 +197,7 @@
 
             try {
                 console.log('Submitting data:', formData);
-                const response = await fetch('https://script.google.com/macros/s/AKfycbzzgS7EX_iSVGFT3XaHwmB_CHNRraW6l4-XFCbSPFJ0bwc6dyydFdtc_dORqwYvdiXhrw/exec', {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbxzrduYbenMOSJRrVsO_w1Efn-dct26AX-Iew3u_tNq3hSMQ4nM-elFrZ5O3O2rYMkm/exec', {
                     redirect: 'follow',
                     method: 'POST',
                     headers: {
