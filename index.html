@@ -62,8 +62,12 @@
         .button-group button {
             margin: 10px 0;
         }
+        .hidden {
+            display: none;
+        }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
 </head>
 <body>
     <div class="container">
@@ -74,13 +78,17 @@
                 data-context="signin"
                 data-ux_mode="popup"
                 data-callback="handleCredentialResponse"
-                data-auto_select="true"
-                data-itp_support="true">
+                data-auto_prompt="false">
             </div>
-            <div class="g_id_signin" data-type="standard"></div>
-            <button id="logout-button" style="display: none;" onclick="handleSignoutClick()">Logout</button>
+            <div id="g_id_signin"></div>
+            <button id="logout-button" class="hidden">Logout</button>
         </div>
-        <form id="journalForm" style="display: none;">
+        <div id="scriptUrlPrompt" class="hidden">
+            <label for="scriptUrl">Enter your Google Apps Script URL:</label>
+            <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec" required>
+            <button type="button" onclick="saveScriptUrl()">Save URL</button>
+        </div>
+        <form id="journalForm" class="hidden">
             <label for="bankroll">Initial Bankroll ($):</label>
             <input type="number" id="bankroll" name="bankroll" required>
 
@@ -110,71 +118,128 @@
     <script>
         const CLIENT_ID = '812194722245-3cinf55qaia7jlftpuoo9kco7dtetmbf.apps.googleusercontent.com'; // Replace with your client ID
 
-        function handleCredentialResponse(response) {
+        async function handleCredentialResponse(response) {
             const token = response.credential;
             localStorage.setItem('google_token', token);
-            document.getElementById('g_id_onload').style.display = 'none';
-            document.getElementById('logout-button').style.display = 'block';
-            document.getElementById('journalForm').style.display = 'block';
-            initializeGapiClient(token);
+            document.getElementById('g_id_signin').style.display = 'none';
+            document.getElementById('logout-button').classList.remove('hidden');
+            await initializeGapiClient();
+            await checkForScriptUrl();
         }
 
-        async function initializeGapiClient(token) {
-            await gapi.client.init({
-                clientId: CLIENT_ID,
-                scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets'
-            });
-            gapi.client.setToken({ access_token: token });
-            listFiles();
-        }
-
-        async function listFiles() {
-            try {
-                const response = await gapi.client.drive.files.list({
-                    'pageSize': 10,
-                    'fields': "nextPageToken, files(id, name)"
+        async function initializeGapiClient() {
+            return new Promise((resolve, reject) => {
+                gapi.load('client:auth2', () => {
+                    gapi.client.init({
+                        clientId: CLIENT_ID,
+                        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
+                    }).then(() => {
+                        resolve();
+                    }).catch(reject);
                 });
-                const files = response.result.files;
-                if (files && files.length > 0) {
-                    let output = '<ul>';
-                    files.forEach(file => {
-                        output += `<li>${file.name}</li>`;
+            });
+        }
+
+        async function checkForScriptUrl() {
+            const scriptUrl = localStorage.getItem('script_url');
+            if (scriptUrl) {
+                document.getElementById('journalForm').classList.remove('hidden');
+            } else {
+                // Check if the backup configuration file exists in Google Drive
+                try {
+                    const response = await gapi.client.drive.files.list({
+                        'q': "name = 'fcs_config.json' and trashed = false",
+                        'spaces': 'drive',
+                        'fields': 'files(id, name)'
                     });
-                    output += '</ul>';
-                    document.getElementById('content').innerHTML = output;
-                } else {
-                    document.getElementById('content').innerHTML = 'No files found.';
+
+                    const files = response.result.files;
+                    if (files && files.length > 0) {
+                        const fileId = files[0].id;
+                        const fileResponse = await gapi.client.drive.files.get({
+                            fileId: fileId,
+                            alt: 'media'
+                        });
+
+                        const configData = JSON.parse(fileResponse.body);
+                        localStorage.setItem('script_url', configData.script_url);
+                        document.getElementById('journalForm').classList.remove('hidden');
+                    } else {
+                        document.getElementById('scriptUrlPrompt').classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error('Error checking for config file:', error);
+                    document.getElementById('scriptUrlPrompt').classList.remove('hidden');
                 }
+            }
+        }
+
+        async function saveScriptUrl() {
+            const scriptUrl = document.getElementById('scriptUrl').value;
+            localStorage.setItem('script_url', scriptUrl);
+
+            // Save the configuration file to Google Drive
+            const configData = {
+                script_url: scriptUrl
+            };
+
+            const blob = new Blob([JSON.stringify(configData)], { type: 'application/json' });
+            const metadata = {
+                name: 'fcs_config.json',
+                mimeType: 'application/json',
+                parents: ['appDataFolder']
+            };
+
+            try {
+                const file = new File([blob], 'fcs_config.json');
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                form.append('file', file);
+
+                const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${gapi.auth.getToken().access_token}`,
+                    },
+                    body: form
+                });
+
+                const result = await response.json();
+                console.log('File saved to Google Drive:', result);
+
+                document.getElementById('scriptUrlPrompt').classList.add('hidden');
+                document.getElementById('journalForm').classList.remove('hidden');
             } catch (error) {
-                console.log('Error listing files: ', error);
+                console.error('Error saving config file:', error);
             }
         }
 
         function handleSignoutClick() {
             google.accounts.id.disableAutoSelect();
             localStorage.removeItem('google_token');
-            document.getElementById('g_id_onload').style.display = 'block';
-            document.getElementById('logout-button').style.display = 'none';
-            document.getElementById('journalForm').style.display = 'none';
-            document.getElementById('content').innerHTML = '';
+            localStorage.removeItem('script_url');
+            document.getElementById('g_id_signin').style.display = 'block';
+            document.getElementById('logout-button').classList.add('hidden');
+            document.getElementById('journalForm').classList.add('hidden');
+            document.getElementById('scriptUrlPrompt').classList.add('hidden');
         }
 
         window.onload = function () {
+            google.accounts.id.initialize({
+                client_id: CLIENT_ID,
+                callback: handleCredentialResponse
+            });
+            google.accounts.id.renderButton(
+                document.getElementById('g_id_signin'),
+                { theme: 'outline', size: 'large' }
+            );
+            document.getElementById('logout-button').onclick = handleSignoutClick;
+
             const token = localStorage.getItem('google_token');
             if (token) {
-                document.getElementById('g_id_onload').style.display = 'none';
-                document.getElementById('logout-button').style.display = 'block';
-                document.getElementById('journalForm').style.display = 'block';
-                initializeGapiClient(token);
-            } else {
-                google.accounts.id.initialize({
-                    client_id: CLIENT_ID,
-                    callback: handleCredentialResponse
-                });
-                google.accounts.id.renderButton(
-                    document.getElementById('g_id_onload'),
-                    { theme: 'outline', size: 'large' }
-                );
+                document.getElementById('g_id_signin').style.display = 'none';
+                document.getElementById('logout-button').classList.remove('hidden');
+                initializeGapiClient().then(checkForScriptUrl);
             }
         }
 
@@ -190,9 +255,11 @@
                 timestamp: new Date().toISOString()
             };
 
+            const scriptUrl = localStorage.getItem('script_url');
+
             try {
                 console.log('Submitting data:', formData);
-                const response = await fetch('https://script.google.com/macros/s/1YVFLVGMELKLY2JLlwRvXW-QnNP0_86ixl6qVhaBmjosO78ZITbdLv-aa/exec', {
+                const response = await fetch(scriptUrl, {
                     redirect: 'follow',
                     method: 'POST',
                     headers: {
