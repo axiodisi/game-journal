@@ -117,6 +117,7 @@
     </div>
     <script>
         const CLIENT_ID = '812194722245-3cinf55qaia7jlftpuoo9kco7dtetmbf.apps.googleusercontent.com'; // Replace with your client ID
+        const CONFIG_VERSION = '1.0'; // Current configuration version
 
         async function handleCredentialResponse(response) {
             const token = response.credential;
@@ -162,6 +163,9 @@
                         });
 
                         const configData = JSON.parse(fileResponse.body);
+                        if (configData.version !== CONFIG_VERSION) {
+                            throw new Error('Config version mismatch');
+                        }
                         localStorage.setItem('script_url', configData.script_url);
                         document.getElementById('journalForm').classList.remove('hidden');
                     } else {
@@ -180,7 +184,8 @@
 
             // Save the configuration file to Google Drive
             const configData = {
-                script_url: scriptUrl
+                script_url: scriptUrl,
+                version: CONFIG_VERSION
             };
 
             const blob = new Blob([JSON.stringify(configData)], { type: 'application/json' });
@@ -221,26 +226,8 @@
             document.getElementById('g_id_signin').style.display = 'block';
             document.getElementById('logout-button').classList.add('hidden');
             document.getElementById('journalForm').classList.add('hidden');
-            document.getElementById('scriptUrlPrompt').classList.add('hidden');
-        }
-
-        window.onload = function () {
-            google.accounts.id.initialize({
-                client_id: CLIENT_ID,
-                callback: handleCredentialResponse
-            });
-            google.accounts.id.renderButton(
-                document.getElementById('g_id_signin'),
-                { theme: 'outline', size: 'large' }
-            );
-            document.getElementById('logout-button').onclick = handleSignoutClick;
-
-            const token = localStorage.getItem('google_token');
-            if (token) {
-                document.getElementById('g_id_signin').style.display = 'none';
-                document.getElementById('logout-button').classList.remove('hidden');
-                initializeGapiClient().then(checkForScriptUrl);
-            }
+            document.getElementById('result').innerText = '';
+            document.getElementById('content').innerHTML = '';
         }
 
         async function submitData() {
@@ -279,6 +266,25 @@
             } catch (error) {
                 console.error('Error:', error);
                 document.getElementById('result').innerText = 'Error submitting data.';
+            }
+        }
+
+        window.onload = function () {
+            google.accounts.id.initialize({
+                client_id: CLIENT_ID,
+                callback: handleCredentialResponse
+            });
+            google.accounts.id.renderButton(
+                document.getElementById('g_id_signin'),
+                { theme: 'outline', size: 'large' }
+            );
+            document.getElementById('logout-button').onclick = handleSignoutClick;
+
+            const token = localStorage.getItem('google_token');
+            if (token) {
+                document.getElementById('g_id_signin').style.display = 'none';
+                document.getElementById('logout-button').classList.remove('hidden');
+                initializeGapiClient().then(checkForScriptUrl);
             }
         }
     </script>
