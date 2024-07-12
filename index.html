@@ -112,106 +112,16 @@
             <button type="button" onclick="submitData()">Submit Data</button>
         </form>
         <div id="result"></div>
-        <div id="content"></div>
     </div>
     <script>
         const CLIENT_ID = '812194722245-3cinf55qaia7jlftpuoo9kco7dtetmbf.apps.googleusercontent.com'; // Replace with your client ID
 
-        async function handleCredentialResponse(response) {
+        function handleCredentialResponse(response) {
             const token = response.credential;
             localStorage.setItem('google_token', token);
             document.getElementById('g_id_signin').style.display = 'none';
             document.getElementById('logout-button').classList.remove('hidden');
-            await initializeGapiClient(token);
-            await checkForScriptUrl();
-        }
-
-        async function initializeGapiClient(token) {
-            return new Promise((resolve, reject) => {
-                gapi.load('client:auth2', () => {
-                    gapi.client.init({
-                        clientId: CLIENT_ID,
-                        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
-                    }).then(() => {
-                        gapi.client.setToken({ access_token: token });
-                        resolve();
-                    }).catch(reject);
-                });
-            });
-        }
-
-        async function checkForScriptUrl() {
-            const scriptUrl = localStorage.getItem('script_url');
-            if (scriptUrl) {
-                document.getElementById('journalForm').classList.remove('hidden');
-            } else {
-                // Check if the backup configuration file exists in Google Drive
-                try {
-                    const response = await gapi.client.drive.files.list({
-                        'q': "name = 'fcs_config.json' and trashed = false",
-                        'spaces': 'appDataFolder',
-                        'fields': 'files(id, name)'
-                    });
-
-                    const files = response.result.files;
-                    if (files && files.length > 0) {
-                        const fileId = files[0].id;
-                        const fileResponse = await gapi.client.drive.files.get({
-                            fileId: fileId,
-                            alt: 'media'
-                        });
-
-                        const configData = JSON.parse(fileResponse.body);
-                        localStorage.setItem('script_url', configData.script_url);
-                        document.getElementById('journalForm').classList.remove('hidden');
-                    } else {
-                        document.getElementById('scriptUrlPrompt').classList.remove('hidden');
-                    }
-                } catch (error) {
-                    console.error('Error checking for config file:', error);
-                    document.getElementById('scriptUrlPrompt').classList.remove('hidden');
-                }
-            }
-        }
-
-        async function saveScriptUrl() {
-            const scriptUrl = document.getElementById('scriptUrl').value;
-            localStorage.setItem('script_url', scriptUrl);
-
-            // Save the configuration file to Google Drive
-            const configData = {
-                script_url: scriptUrl
-            };
-
-            const blob = new Blob([JSON.stringify(configData)], { type: 'application/json' });
-            const metadata = {
-                name: 'fcs_config.json',
-                mimeType: 'application/json',
-                parents: ['appDataFolder']
-            };
-
-            try {
-                const file = new File([blob], 'fcs_config.json');
-                const form = new FormData();
-                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                form.append('file', file);
-
-                const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${gapi.auth.getToken().access_token}`,
-                    },
-                    body: form
-                });
-
-                const result = await response.json();
-                console.log('File saved to Google Drive:', result);
-
-                document.getElementById('scriptUrlPrompt').classList.add('hidden');
-                document.getElementById('journalForm').classList.remove('hidden');
-            } catch (error) {
-                console.error('Error saving config file:', error);
-            }
+            checkForScriptUrl();
         }
 
         function handleSignoutClick() {
@@ -222,6 +132,22 @@
             document.getElementById('logout-button').classList.add('hidden');
             document.getElementById('journalForm').classList.add('hidden');
             document.getElementById('scriptUrlPrompt').classList.add('hidden');
+        }
+
+        function checkForScriptUrl() {
+            const scriptUrl = localStorage.getItem('script_url');
+            if (scriptUrl) {
+                document.getElementById('journalForm').classList.remove('hidden');
+            } else {
+                document.getElementById('scriptUrlPrompt').classList.remove('hidden');
+            }
+        }
+
+        function saveScriptUrl() {
+            const scriptUrl = document.getElementById('scriptUrl').value;
+            localStorage.setItem('script_url', scriptUrl);
+            document.getElementById('scriptUrlPrompt').classList.add('hidden');
+            document.getElementById('journalForm').classList.remove('hidden');
         }
 
         window.onload = function () {
@@ -239,11 +165,12 @@
             if (token) {
                 document.getElementById('g_id_signin').style.display = 'none';
                 document.getElementById('logout-button').classList.remove('hidden');
-                initializeGapiClient(token).then(checkForScriptUrl);
+                checkForScriptUrl();
             }
         }
 
         async function submitData() {
+            const scriptUrl = localStorage.getItem('script_url');
             const formData = {
                 bankroll: document.getElementById('bankroll').value,
                 max_loss: document.getElementById('max_loss').value,
@@ -251,11 +178,19 @@
                 rounds_played: document.getElementById('rounds_played').value,
                 final_bankroll: document.getElementById('final_bankroll').value,
                 strategy: document.getElementById('strategy').value,
-                improvement: document.getElementById('improvement').value,
-                timestamp: new Date().toISOString()
+                improvement: document.getElementById('improvement').value
             };
 
-            const scriptUrl = localStorage.getItem('script_url');
+            const now = new Date();
+            const year = String(now.getFullYear()).slice(2);
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hour = String(now.getHours()).padStart(2, '0');
+            const minute = String(now.getMinutes()).padStart(2, '0');
+            const second = String(now.getSeconds()).padStart(2, '0');
+            const timestamp = `${year}${month}${day}${hour}${minute}${second}`;
+
+            formData.timestamp = timestamp;
 
             try {
                 console.log('Submitting data:', formData);
