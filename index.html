@@ -117,9 +117,14 @@
                     clientId: CLIENT_ID,
                     scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
                 }).then(() => {
-                    gapi.auth2.getAuthInstance().signIn().then(() => {
+                    const authInstance = gapi.auth2.getAuthInstance();
+                    if (authInstance.isSignedIn.get()) {
                         listFiles();
-                    });
+                    } else {
+                        authInstance.signIn().then(() => {
+                            listFiles();
+                        });
+                    }
                 });
             });
         }
@@ -179,7 +184,7 @@
                 rounds_played: document.getElementById('rounds_played').value,
                 final_bankroll: document.getElementById('final_bankroll').value,
                 strategy: document.getElementById('strategy').value,
-                improvement: document.getElementById('improvement').value
+                improvement: document.getElementById('improvement').value,
             };
 
             const now = new Date();
