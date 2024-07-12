@@ -149,14 +149,15 @@
         }
 
         function handleSignoutClick() {
-            gapi.auth2.getAuthInstance().signOut().then(() => {
+            const authInstance = gapi.auth2.getAuthInstance();
+            authInstance.signOut().then(() => {
                 localStorage.removeItem('google_token');
                 document.getElementById('login-button').style.display = 'block';
                 document.getElementById('logout-button').style.display = 'none';
                 document.getElementById('content').innerHTML = '';
-            }).then(() => {
-                // Reload the page to ensure user can log in with another account
                 window.location.reload();
+            }).catch(error => {
+                console.error('Error signing out:', error);
             });
         }
 
