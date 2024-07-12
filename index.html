@@ -64,13 +64,19 @@
         }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://apis.google.com/js/api.js" async defer></script>
 </head>
 <body>
     <div class="container">
         <h1>FCS Game Journal</h1>
         <div class="button-group">
-            <button id="login-button">Login with Google</button>
+            <div id="g_id_onload"
+                data-client_id="YOUR_CLIENT_ID"
+                data-context="signin"
+                data-ux_mode="popup"
+                data-callback="handleCredentialResponse"
+                data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin" data-type="standard"></div>
             <button id="logout-button" style="display: none;">Logout</button>
         </div>
         <form id="journalForm">
@@ -101,30 +107,24 @@
         <div id="content"></div>
     </div>
     <script>
-        const CLIENT_ID = '812194722245-3cinf55qaia7jlftpuoo9kco7dtetmbf.apps.googleusercontent.com'; // Replace with your client ID
+        const CLIENT_ID = 'YOUR_CLIENT_ID'; // Replace with your client ID
 
         function handleCredentialResponse(response) {
             const token = response.credential;
             localStorage.setItem('google_token', token);
             document.getElementById('login-button').style.display = 'none';
             document.getElementById('logout-button').style.display = 'block';
-            initializeGapiClient();
+            initializeGapiClient(token);
         }
 
-        function initializeGapiClient() {
-            gapi.load('client:auth2', () => {
+        function initializeGapiClient(token) {
+            gapi.load('client', () => {
                 gapi.client.init({
-                    clientId: CLIENT_ID,
-                    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
+                    'apiKey': 'YOUR_API_KEY', // Replace with your API key
+                    'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
                 }).then(() => {
-                    const authInstance = gapi.auth2.getAuthInstance();
-                    if (authInstance.isSignedIn.get()) {
-                        listFiles();
-                    } else {
-                        authInstance.signIn().then(() => {
-                            listFiles();
-                        });
-                    }
+                    gapi.client.setToken({ access_token: token });
+                    listFiles();
                 }).catch(error => {
                     console.error('Error initializing GAPI client:', error);
                 });
@@ -153,39 +153,21 @@
         }
 
         function handleSignoutClick() {
-            const authInstance = gapi.auth2.getAuthInstance();
-            authInstance.signOut().then(() => {
-                localStorage.removeItem('google_token');
-                document.getElementById('login-button').style.display = 'block';
-                document.getElementById('logout-button').style.display = 'none';
-                document.getElementById('content').innerHTML = '';
-                window.location.reload();
-            }).catch(error => {
-                console.error('Error signing out:', error);
-                localStorage.removeItem('google_token');
-                document.getElementById('login-button').style.display = 'block';
-                document.getElementById('logout-button').style.display = 'none';
-                document.getElementById('content').innerHTML = '';
-                window.location.reload();
-            });
+            localStorage.removeItem('google_token');
+            document.getElementById('login-button').style.display = 'block';
+            document.getElementById('logout-button').style.display = 'none';
+            document.getElementById('content').innerHTML = '';
+            window.location.reload();
         }
 
         window.onload = function () {
-            google.accounts.id.initialize({
-                client_id: CLIENT_ID,
-                callback: handleCredentialResponse
-            });
-            google.accounts.id.renderButton(
-                document.getElementById('login-button'),
-                { theme: 'outline', size: 'large' }
-            );
             document.getElementById('logout-button').onclick = handleSignoutClick;
 
             const token = localStorage.getItem('google_token');
             if (token) {
                 document.getElementById('login-button').style.display = 'none';
                 document.getElementById('logout-button').style.display = 'block';
-                initializeGapiClient();
+                initializeGapiClient(token);
             }
         }
 
