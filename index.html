@@ -108,7 +108,6 @@
     </div>
     <script>
         const CLIENT_ID = '812194722245-3cinf55qaia7jlftpuoo9kco7dtetmbf.apps.googleusercontent.com'; // Replace with your client ID
-        let tokenClient;
         let accessToken = null;
 
         function handleCredentialResponse(response) {
@@ -116,42 +115,30 @@
             localStorage.setItem('google_token', accessToken);
             document.getElementById('g_id_signin').style.display = 'none';
             document.getElementById('logout-button').style.display = 'block';
-            initializeGapiClient();
-        }
-
-        function initializeGapiClient() {
-            gapi.load('client', () => {
-                gapi.client.init({
-                    apiKey: 'YOUR_API_KEY', // Replace with your API key
-                    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-                }).then(() => {
-                    gapi.client.setToken({ access_token: accessToken });
-                    listFiles();
-                }).catch(error => {
-                    console.error('Error initializing GAPI client:', error);
-                });
-            });
+            listFiles();
         }
 
         function listFiles() {
-            gapi.client.drive.files.list({
-                'pageSize': 10,
-                'fields': "nextPageToken, files(id, name)"
-            }).then(function(response) {
-                const files = response.result.files;
-                if (files && files.length > 0) {
-                    let output = '<ul>';
-                    files.forEach(file => {
-                        output += `<li>${file.name}</li>`;
-                    });
-                    output += '</ul>';
-                    document.getElementById('content').innerHTML = output;
-                } else {
-                    document.getElementById('content').innerHTML = 'No files found.';
+            fetch('https://www.googleapis.com/drive/v3/files?pageSize=10&fields=nextPageToken,files(id,name)', {
+                headers: {
+                    'Authorization': 'Bearer ' + accessToken
                 }
-            }).catch(error => {
-                console.error('Error listing files:', error);
-            });
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.files && data.files.length > 0) {
+                      let output = '<ul>';
+                      data.files.forEach(file => {
+                          output += `<li>${file.name}</li>`;
+                      });
+                      output += '</ul>';
+                      document.getElementById('content').innerHTML = output;
+                  } else {
+                      document.getElementById('content').innerHTML = 'No files found.';
+                  }
+              }).catch(error => {
+                  console.error('Error listing files:', error);
+                  document.getElementById('content').innerHTML = 'Error listing files.';
+              });
         }
 
         function handleSignoutClick() {
@@ -181,7 +168,7 @@
                 accessToken = token;
                 document.getElementById('g_id_signin').style.display = 'none';
                 document.getElementById('logout-button').style.display = 'block';
-                initializeGapiClient();
+                listFiles();
             }
         }
 
