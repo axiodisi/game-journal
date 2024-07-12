@@ -64,42 +64,6 @@
         }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://apis.google.com/js/api.js" async defer></script>
-</head>
-<body>
-    <div class="container">
-        <h1>FCS Game Journal</h1>
-        <div class="button-group">
-            <button id="login-button">Login with Google</button>
-            <button id="logout-button" style="display: none;">Logout</button>
-        </div>
-        <form id="journalForm" style="display: none;">
-            <label for="bankroll">Initial Bankroll ($):</label>
-            <input type="number" id="bankroll" name="bankroll" required>
-
-            <label for="max_loss">Max Loss ($):</label>
-            <input type="number" id="max_loss" name="max_loss" required>
-
-            <label for="take_profit">Take Profit ($):</label>
-            <input type="number" id="take_profit" name="take_profit" required>
-
-            <label for="rounds_played">Rounds Played:</label>
-            <input type="number" id="rounds_played" name="rounds_played" required>
-
-            <label for="final_bankroll">Final Bankroll ($):</label>
-            <input type="number" id="final_bankroll" name="final_bankroll" required>
-
-            <label for="strategy">Did you stick to the strategy? (Yes/No):</label>
-            <input type="text" id="strategy" name="strategy" required>
-
-            <label for="improvement">What can you improve next time?</label>
-            <textarea id="improvement" name="improvement" rows="4" required></textarea>
-
-            <button type="button" onclick="submitData()">Submit Data</button>
-        </form>
-        <div id="result"></div>
-        <div id="content"></div>
-    </div>
     <script>
         const CLIENT_ID = '812194722245-3cinf55qaia7jlftpuoo9kco7dtetmbf.apps.googleusercontent.com'; // Replace with your client ID
 
@@ -109,17 +73,19 @@
             document.getElementById('login-button').style.display = 'none';
             document.getElementById('logout-button').style.display = 'block';
             document.getElementById('journalForm').style.display = 'block';
-            initializeGapiClient();
+            initializeGapiClient(token);
         }
 
-        function initializeGapiClient() {
-            gapi.load('client:auth2', () => {
-                gapi.client.init({
+        function initializeGapiClient(token) {
+            gapi.load('client', async () => {
+                await gapi.client.init({
                     clientId: CLIENT_ID,
                     scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
-                }).then(() => {
-                    listFiles();
                 });
+
+                gapi.client.setToken({ 'access_token': token });
+
+                listFiles();
             });
         }
 
@@ -166,7 +132,7 @@
                 document.getElementById('login-button').style.display = 'none';
                 document.getElementById('logout-button').style.display = 'block';
                 document.getElementById('journalForm').style.display = 'block';
-                initializeGapiClient();
+                initializeGapiClient(token);
             }
         }
 
@@ -184,7 +150,7 @@
 
             try {
                 console.log('Submitting data:', formData);
-                const response = await fetch('https://script.google.com/macros/s/AKfycbxuLnM0w-gV_WALg5cyJJBG_HGG5RMj4CKTXAnIZtybMKc4BDKt5A19vh3HTolUgytGVA/exec', {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbz9EEe9XrAVpGSdvRHoTuvsbZ5iOBhSytp_e3hXT4o3OSzgZksViiAUwv3A0F2UyQ4y4Q/exec', {
                     redirect: 'follow',
                     method: 'POST',
                     headers: {
@@ -207,5 +173,40 @@
             }
         }
     </script>
+</head>
+<body>
+    <div class="container">
+        <h1>FCS Game Journal</h1>
+        <div class="button-group">
+            <button id="login-button">Login with Google</button>
+            <button id="logout-button" style="display: none;">Logout</button>
+        </div>
+        <form id="journalForm" style="display: none;">
+            <label for="bankroll">Initial Bankroll ($):</label>
+            <input type="number" id="bankroll" name="bankroll" required>
+
+            <label for="max_loss">Max Loss ($):</label>
+            <input type="number" id="max_loss" name="max_loss" required>
+
+            <label for="take_profit">Take Profit ($):</label>
+            <input type="number" id="take_profit" name="take_profit" required>
+
+            <label for="rounds_played">Rounds Played:</label>
+            <input type="number" id="rounds_played" name="rounds_played" required>
+
+            <label for="final_bankroll">Final Bankroll ($):</label>
+            <input type="number" id="final_bankroll" name="final_bankroll" required>
+
+            <label for="strategy">Did you stick to the strategy? (Yes/No):</label>
+            <input type="text" id="strategy" name="strategy" required>
+
+            <label for="improvement">What can you improve next time?</label>
+            <textarea id="improvement" name="improvement" rows="4" required></textarea>
+
+            <button type="button" onclick="submitData()">Submit Data</button>
+        </form>
+        <div id="result"></div>
+        <div id="content"></div>
+    </div>
 </body>
 </html>
