@@ -70,7 +70,14 @@
     <div class="container">
         <h1>FCS Game Journal</h1>
         <div class="button-group">
-            <button id="login-button">Login with Google</button>
+            <div id="g_id_onload"
+                data-client_id="YOUR_CLIENT_ID"
+                data-context="signin"
+                data-ux_mode="popup"
+                data-callback="handleCredentialResponse"
+                data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin" data-type="standard"></div>
             <button id="logout-button" style="display: none;">Logout</button>
         </div>
         <form id="journalForm">
@@ -101,23 +108,26 @@
         <div id="content"></div>
     </div>
     <script>
-        const CLIENT_ID = '812194722245-3cinf55qaia7jlftpuoo9kco7dtetmbf.apps.googleusercontent.com'; // Replace with your client ID
+        const CLIENT_ID = 'YOUR_CLIENT_ID'; // Replace with your client ID
 
         function handleCredentialResponse(response) {
             const token = response.credential;
             localStorage.setItem('google_token', token);
             document.getElementById('login-button').style.display = 'none';
             document.getElementById('logout-button').style.display = 'block';
-            initializeGapiClient();
+            initializeGapiClient(token);
         }
 
-        function initializeGapiClient() {
-            gapi.load('client:auth2', () => {
+        function initializeGapiClient(token) {
+            gapi.load('client', () => {
                 gapi.client.init({
-                    clientId: CLIENT_ID,
-                    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
+                    'apiKey': 'YOUR_API_KEY', // Replace with your API key
+                    'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
                 }).then(() => {
+                    gapi.client.setToken({ access_token: token });
                     listFiles();
+                }).catch(error => {
+                    console.error('Error initializing GAPI client:', error);
                 });
             });
         }
@@ -138,20 +148,25 @@
                 } else {
                     document.getElementById('content').innerHTML = 'No files found.';
                 }
+            }).catch(error => {
+                console.error('Error listing files:', error);
             });
         }
 
         function handleSignoutClick() {
+            google.accounts.id.disableAutoSelect();
             localStorage.removeItem('google_token');
             document.getElementById('login-button').style.display = 'block';
             document.getElementById('logout-button').style.display = 'none';
             document.getElementById('content').innerHTML = '';
+            window.location.reload();
         }
 
         window.onload = function () {
             google.accounts.id.initialize({
                 client_id: CLIENT_ID,
-                callback: handleCredentialResponse
+                callback: handleCredentialResponse,
+                auto_select: false
             });
             google.accounts.id.renderButton(
                 document.getElementById('login-button'),
@@ -163,7 +178,7 @@
             if (token) {
                 document.getElementById('login-button').style.display = 'none';
                 document.getElementById('logout-button').style.display = 'block';
-                initializeGapiClient();
+                initializeGapiClient(token);
             }
         }
 
@@ -175,19 +190,9 @@
                 rounds_played: document.getElementById('rounds_played').value,
                 final_bankroll: document.getElementById('final_bankroll').value,
                 strategy: document.getElementById('strategy').value,
-                improvement: document.getElementById('improvement').value
+                improvement: document.getElementById('improvement').value,
+                timestamp: new Date().toISOString(),
             };
-
-            const now = new Date();
-            const year = String(now.getFullYear()).slice(2);
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hour = String(now.getHours()).padStart(2, '0');
-            const minute = String(now.getMinutes()).padStart(2, '0');
-            const second = String(now.getSeconds()).padStart(2, '0');
-            const timestamp = `${year}${month}${day}${hour}${minute}${second}`;
-
-            formData.timestamp = timestamp;
 
             try {
                 console.log('Submitting data:', formData);
