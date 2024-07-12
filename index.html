@@ -62,9 +62,6 @@
         .button-group button {
             margin: 10px 0;
         }
-        .hidden {
-            display: none;
-        }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://apis.google.com/js/api.js" async defer></script>
@@ -73,22 +70,10 @@
     <div class="container">
         <h1>FCS Game Journal</h1>
         <div class="button-group">
-            <div id="g_id_onload"
-                data-client_id="812194722245-3cinf55qaia7jlftpuoo9kco7dtetmbf.apps.googleusercontent.com"
-                data-context="signin"
-                data-ux_mode="popup"
-                data-callback="handleCredentialResponse"
-                data-auto_prompt="false">
-            </div>
-            <div id="g_id_signin"></div>
-            <button id="logout-button" class="hidden">Logout</button>
+            <button id="login-button">Login with Google</button>
+            <button id="logout-button" style="display: none;">Logout</button>
         </div>
-        <div id="scriptUrlPrompt" class="hidden">
-            <label for="scriptUrl">Enter your Google Apps Script URL:</label>
-            <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec" required>
-            <button type="button" onclick="saveScriptUrl()">Save URL</button>
-        </div>
-        <form id="journalForm" class="hidden">
+        <form id="journalForm" style="display: none;">
             <label for="bankroll">Initial Bankroll ($):</label>
             <input type="number" id="bankroll" name="bankroll" required>
 
@@ -117,117 +102,72 @@
     </div>
     <script>
         const CLIENT_ID = '812194722245-3cinf55qaia7jlftpuoo9kco7dtetmbf.apps.googleusercontent.com'; // Replace with your client ID
-        const CONFIG_VERSION = '1.0'; // Current configuration version
 
-        async function handleCredentialResponse(response) {
+        function handleCredentialResponse(response) {
             const token = response.credential;
             localStorage.setItem('google_token', token);
-            document.getElementById('g_id_signin').style.display = 'none';
-            document.getElementById('logout-button').classList.remove('hidden');
-            await initializeGapiClient();
-            await checkForScriptUrl();
+            document.getElementById('login-button').style.display = 'none';
+            document.getElementById('logout-button').style.display = 'block';
+            document.getElementById('journalForm').style.display = 'block';
+            initializeGapiClient();
         }
 
-        async function initializeGapiClient() {
-            return new Promise((resolve, reject) => {
-                gapi.load('client:auth2', () => {
-                    gapi.client.init({
-                        clientId: CLIENT_ID,
-                        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
-                    }).then(() => {
-                        resolve();
-                    }).catch(reject);
+        function initializeGapiClient() {
+            gapi.load('client:auth2', () => {
+                gapi.client.init({
+                    clientId: CLIENT_ID,
+                    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
+                }).then(() => {
+                    listFiles();
                 });
             });
         }
 
-        async function checkForScriptUrl() {
-            const scriptUrl = localStorage.getItem('script_url');
-            if (scriptUrl) {
-                document.getElementById('journalForm').classList.remove('hidden');
-            } else {
-                // Check if the backup configuration file exists in Google Drive
-                try {
-                    const response = await gapi.client.drive.files.list({
-                        'q': "name = 'fcs_config.json' and trashed = false",
-                        'spaces': 'drive',
-                        'fields': 'files(id, name)'
+        function listFiles() {
+            gapi.client.drive.files.list({
+                'pageSize': 10,
+                'fields': "nextPageToken, files(id, name)"
+            }).then(function(response) {
+                const files = response.result.files;
+                if (files && files.length > 0) {
+                    let output = '<ul>';
+                    files.forEach(file => {
+                        output += `<li>${file.name}</li>`;
                     });
-
-                    const files = response.result.files;
-                    if (files && files.length > 0) {
-                        const fileId = files[0].id;
-                        const fileResponse = await gapi.client.drive.files.get({
-                            fileId: fileId,
-                            alt: 'media'
-                        });
-
-                        const configData = JSON.parse(fileResponse.body);
-                        if (configData.version !== CONFIG_VERSION) {
-                            throw new Error('Config version mismatch');
-                        }
-                        localStorage.setItem('script_url', configData.script_url);
-                        document.getElementById('journalForm').classList.remove('hidden');
-                    } else {
-                        document.getElementById('scriptUrlPrompt').classList.remove('hidden');
-                    }
-                } catch (error) {
-                    console.error('Error checking for config file:', error);
-                    document.getElementById('scriptUrlPrompt').classList.remove('hidden');
+                    output += '</ul>';
+                    document.getElementById('content').innerHTML = output;
+                } else {
+                    document.getElementById('content').innerHTML = 'No files found.';
                 }
-            }
-        }
-
-        async function saveScriptUrl() {
-            const scriptUrl = document.getElementById('scriptUrl').value;
-            localStorage.setItem('script_url', scriptUrl);
-
-            // Save the configuration file to Google Drive
-            const configData = {
-                script_url: scriptUrl,
-                version: CONFIG_VERSION
-            };
-
-            const blob = new Blob([JSON.stringify(configData)], { type: 'application/json' });
-            const metadata = {
-                name: 'fcs_config.json',
-                mimeType: 'application/json',
-                parents: ['appDataFolder']
-            };
-
-            try {
-                const file = new File([blob], 'fcs_config.json');
-                const form = new FormData();
-                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                form.append('file', file);
-
-                const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${gapi.auth.getToken().access_token}`,
-                    },
-                    body: form
-                });
-
-                const result = await response.json();
-                console.log('File saved to Google Drive:', result);
-
-                document.getElementById('scriptUrlPrompt').classList.add('hidden');
-                document.getElementById('journalForm').classList.remove('hidden');
-            } catch (error) {
-                console.error('Error saving config file:', error);
-            }
+            });
         }
 
         function handleSignoutClick() {
-            google.accounts.id.disableAutoSelect();
             localStorage.removeItem('google_token');
-            localStorage.removeItem('script_url');
-            document.getElementById('g_id_signin').style.display = 'block';
-            document.getElementById('logout-button').classList.add('hidden');
-            document.getElementById('journalForm').classList.add('hidden');
-            document.getElementById('result').innerText = '';
+            document.getElementById('login-button').style.display = 'block';
+            document.getElementById('logout-button').style.display = 'none';
+            document.getElementById('journalForm').style.display = 'none';
             document.getElementById('content').innerHTML = '';
+        }
+
+        window.onload = function () {
+            google.accounts.id.initialize({
+                client_id: CLIENT_ID,
+                callback: handleCredentialResponse
+            });
+            google.accounts.id.renderButton(
+                document.getElementById('login-button'),
+                { theme: 'outline', size: 'large' }
+            );
+            document.getElementById('logout-button').onclick = handleSignoutClick;
+
+            const token = localStorage.getItem('google_token');
+            if (token) {
+                document.getElementById('login-button').style.display = 'none';
+                document.getElementById('logout-button').style.display = 'block';
+                document.getElementById('journalForm').style.display = 'block';
+                initializeGapiClient();
+            }
         }
 
         async function submitData() {
@@ -242,11 +182,9 @@
                 timestamp: new Date().toISOString()
             };
 
-            const scriptUrl = localStorage.getItem('script_url');
-
             try {
                 console.log('Submitting data:', formData);
-                const response = await fetch(scriptUrl, {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbxuLnM0w-gV_WALg5cyJJBG_HGG5RMj4CKTXAnIZtybMKc4BDKt5A19vh3HTolUgytGVA/exec', {
                     redirect: 'follow',
                     method: 'POST',
                     headers: {
@@ -266,25 +204,6 @@
             } catch (error) {
                 console.error('Error:', error);
                 document.getElementById('result').innerText = 'Error submitting data.';
-            }
-        }
-
-        window.onload = function () {
-            google.accounts.id.initialize({
-                client_id: CLIENT_ID,
-                callback: handleCredentialResponse
-            });
-            google.accounts.id.renderButton(
-                document.getElementById('g_id_signin'),
-                { theme: 'outline', size: 'large' }
-            );
-            document.getElementById('logout-button').onclick = handleSignoutClick;
-
-            const token = localStorage.getItem('google_token');
-            if (token) {
-                document.getElementById('g_id_signin').style.display = 'none';
-                document.getElementById('logout-button').classList.remove('hidden');
-                initializeGapiClient().then(checkForScriptUrl);
             }
         }
     </script>
